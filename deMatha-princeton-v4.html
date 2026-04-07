@@ -1,0 +1,1166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DeMatha → Princeton 4-Out · Complete System</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;700&display=swap');
+
+  :root {
+    --bg: #0d1017;
+    --panel: #121820;
+    --border: #1e2a3a;
+    --red: #e03a2e;
+    --blue: #2a6ae8;
+    --gold: #f0b429;
+    --white: #f2ede4;
+    --gray: #6b7a8d;
+    --green: #27ae60;
+    --purple: #9b59b6;
+    --teal: #1abc9c;
+    --orange: #e67e22;
+
+    /* Court geometry constants — half-court SVG viewBox 0 0 520 420 */
+    /* Basket at cy=380, key top at cy=280, elbow-right cx=340, elbow-left cx=180 */
+    /* 3pt corners: left cx=58 cy=320, right cx=462 cy=320                       */
+    /* Top slots (above elbow): right cx=340 cy=210, left cx=180 cy=210           */
+    /* Corners (near baseline): right cx=462 cy=355, left cx=58 cy=355            */
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--white);
+    font-family: 'DM Sans', sans-serif;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  header {
+    padding: 14px 24px 12px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+  }
+
+  header h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(20px, 3.2vw, 40px);
+    letter-spacing: 2px;
+    line-height: 1;
+  }
+
+  header h1 span { color: var(--gold); }
+
+  header p {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--gray);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+  }
+
+  .badge {
+    background: var(--red);
+    color: #fff;
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    padding: 3px 8px;
+    border-radius: 2px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-left: auto;
+  }
+
+  .main {
+    display: grid;
+    grid-template-columns: 1fr 300px;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* ── LEFT: court ── */
+  .court-area {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 12px 12px 8px;
+    gap: 10px;
+  }
+
+  .phase-tabs {
+    display: flex;
+    gap: 3px;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+  }
+
+  .phase-tab {
+    padding: 5px 11px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--gray);
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: all .18s;
+    white-space: nowrap;
+  }
+
+  .phase-tab:hover { color: var(--white); border-color: var(--gray); }
+
+  .phase-tab.active {
+    background: var(--gold);
+    color: #0d1017;
+    border-color: var(--gold);
+    font-weight: 700;
+  }
+
+  .court-wrapper {
+    position: relative;
+    flex: 1;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .phase-diagram { display: none; width: 100%; height: 100%; }
+  .phase-diagram.active { display: block; }
+
+  svg.cs { width: 100%; height: 100%; }
+
+  /* ── RIGHT: sidebar ── */
+  .sidebar {
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .prog-bar {
+    display: flex;
+    flex-shrink: 0;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+
+  .prog-step {
+    flex: 1;
+    min-width: 30px;
+    padding: 7px 3px;
+    text-align: center;
+    font-family: 'DM Mono', monospace;
+    font-size: 8px;
+    letter-spacing: .3px;
+    color: var(--gray);
+    border-right: 1px solid var(--border);
+    cursor: pointer;
+    transition: all .18s;
+    line-height: 1.3;
+  }
+
+  .prog-step:last-child { border-right: none; }
+  .prog-step:hover { background: rgba(255,255,255,.03); color: var(--white); }
+  .prog-step.active { background: rgba(240,180,41,.1); color: var(--gold); }
+
+  .sidebar-body {
+    overflow-y: auto;
+    flex: 1;
+    padding: 14px 16px;
+  }
+
+  .phase-content { display: none; }
+  .phase-content.active { display: block; }
+
+  .phase-content h3 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 16px;
+    letter-spacing: 2px;
+    color: var(--gold);
+    margin-bottom: 10px;
+  }
+
+  .cp {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+    align-items: flex-start;
+  }
+
+  .cp-n {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px;
+    color: var(--gold);
+    line-height: 1;
+    min-width: 18px;
+  }
+
+  .cp-t { font-size: 11.5px; line-height: 1.5; color: var(--white); }
+  .cp-t strong { color: var(--gold); }
+  .cp-t em { color: var(--gray); font-style: normal; font-size: 10.5px; }
+
+  .pill {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 9px;
+    font-family: 'DM Mono', monospace;
+    font-size: 8.5px;
+    font-weight: 700;
+    letter-spacing: .4px;
+    text-transform: uppercase;
+    vertical-align: middle;
+    margin-right: 2px;
+  }
+
+  .p1 { background: rgba(240,180,41,.18); color: var(--gold); border: 1px solid rgba(240,180,41,.4); }
+  .p2 { background: rgba(39,174,96,.18); color: #2ecc71; border: 1px solid rgba(39,174,96,.4); }
+  .p3 { background: rgba(42,106,232,.18); color: #7db3ff; border: 1px solid rgba(42,106,232,.4); }
+  .p4 { background: rgba(224,58,46,.18); color: #ff7b6e; border: 1px solid rgba(224,58,46,.4); }
+  .p5 { background: rgba(155,89,182,.18); color: #c39bd3; border: 1px solid rgba(155,89,182,.4); }
+
+  .kbox {
+    background: rgba(240,180,41,.05);
+    border-left: 3px solid var(--gold);
+    padding: 8px 10px;
+    margin-top: 10px;
+    font-size: 11px;
+    line-height: 1.5;
+    color: var(--gray);
+  }
+
+  .kbox strong {
+    display: block;
+    font-size: 9px;
+    color: var(--gold);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 3px;
+  }
+
+  .bbridge {
+    background: rgba(27,188,156,.06);
+    border: 1px solid rgba(27,188,156,.25);
+    padding: 8px 10px;
+    border-radius: 3px;
+    margin-top: 10px;
+    font-size: 11px;
+    color: var(--gray);
+    line-height: 1.5;
+  }
+
+  .bbridge strong {
+    display: block;
+    font-size: 9px;
+    color: var(--teal);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 3px;
+  }
+
+  /* Tooltip */
+  .tip {
+    position: absolute;
+    background: #18202e;
+    border: 1px solid #2a3a50;
+    border-radius: 4px;
+    padding: 7px 10px;
+    font-size: 11px;
+    color: var(--white);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity .14s;
+    max-width: 200px;
+    z-index: 100;
+    line-height: 1.4;
+  }
+
+  .tip.show { opacity: 1; }
+  .tip strong { color: var(--gold); display: block; margin-bottom: 2px; font-size: 10.5px; }
+
+  .pc { cursor: pointer; }
+  .pc:hover circle { filter: brightness(1.25); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>DeMatha <span>Wootten</span> Fast Break → <span>Princeton 4-Out</span></h1>
+  <p>Complete 8-Phase System</p>
+  <div class="badge">8 Phases</div>
+</header>
+
+<div class="main">
+
+  <!-- ══════════════ COURT AREA ══════════════ -->
+  <div class="court-area">
+    <div class="phase-tabs" id="tabs"></div>
+    <div class="court-wrapper" id="cw">
+      <div class="tip" id="tip"></div>
+
+      <!-- Shared coordinate reference (half-court, viewBox 0 0 520 420):
+           Basket:        cx=260 cy=385
+           Key block:     x=180 y=285 w=160 h=100
+           Elbow-right:   cx=340 cy=285
+           Elbow-left:    cx=180 cy=285
+           Top slots:     right cx=340 cy=205  left cx=180 cy=205
+           Corners:       right cx=462 cy=355  left cx=58 cy=355
+           3pt arc baseline: y≈355, corners at cx≈58 and cx≈462
+      -->
+
+      <!-- ───────── PHASE 1: Outlet & Lanes ───────── -->
+      <div class="phase-diagram active" id="pd-1">
+        <svg class="cs" viewBox="0 0 520 500" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="ag1" markerWidth="7" markerHeight="7" refX="5" refY="2.5" orient="auto"><path d="M0,0 L0,5 L7,2.5z" fill="#27ae60"/></marker>
+            <marker id="au1" markerWidth="7" markerHeight="7" refX="5" refY="2.5" orient="auto"><path d="M0,0 L0,5 L7,2.5z" fill="#f0b429"/></marker>
+            <marker id="ar1" markerWidth="7" markerHeight="7" refX="5" refY="2.5" orient="auto"><path d="M0,0 L0,5 L7,2.5z" fill="#ff7b6e"/></marker>
+            <marker id="ab1" markerWidth="7" markerHeight="7" refX="5" refY="2.5" orient="auto"><path d="M0,0 L0,5 L7,2.5z" fill="#7db3ff"/></marker>
+            <marker id="ap1" markerWidth="7" markerHeight="7" refX="5" refY="2.5" orient="auto"><path d="M0,0 L0,5 L7,2.5z" fill="#c39bd3"/></marker>
+          </defs>
+
+          <!-- Full court bg -->
+          <rect width="520" height="500" fill="#1a1a2e"/>
+          <rect x="20" y="18" width="480" height="464" fill="#c8a055" rx="3" stroke="#e8d5a8" stroke-width="2"/>
+          <!-- Half-court line -->
+          <line x1="20" y1="250" x2="500" y2="250" stroke="#e8d5a8" stroke-width="1.5"/>
+          <circle cx="260" cy="250" r="36" fill="none" stroke="#e8d5a8" stroke-width="1.5"/>
+          <!-- Defensive key (top) -->
+          <rect x="180" y="18" width="160" height="88" fill="#b89040" stroke="#e8d5a8" stroke-width="1.5"/>
+          <rect x="200" y="18" width="120" height="58" fill="none" stroke="#e8d5a8" stroke-width="1"/>
+          <path d="M188 88 A72 72 0 0 0 332 88" fill="none" stroke="#e8d5a8" stroke-width="1.5"/>
+          <circle cx="260" cy="38" r="10" fill="none" stroke="#e8d5a8" stroke-width="2"/>
+          <line x1="235" y1="38" x2="285" y2="38" stroke="#e8d5a8" stroke-width="1.5"/>
+          <!-- Attacking key (bottom) -->
+          <rect x="180" y="285" width="160" height="100" fill="#b89040" stroke="#e8d5a8" stroke-width="1.5"/>
+          <line x1="180" y1="315" x2="340" y2="315" stroke="#e8d5a8" stroke-width="1"/>
+          <path d="M188 315 A72 72 0 0 1 332 315" fill="none" stroke="#e8d5a8" stroke-width="1.5"/>
+          <line x1="180" y1="285" x2="180" y2="315" stroke="#e8d5a8" stroke-width="1"/>
+          <line x1="340" y1="285" x2="340" y2="315" stroke="#e8d5a8" stroke-width="1"/>
+          <!-- 3pt arc bottom -->
+          <path d="M58 355 A204 204 0 0 1 462 355" fill="none" stroke="#e8d5a8" stroke-width="1.5"/>
+          <line x1="58" y1="320" x2="58" y2="355" stroke="#e8d5a8" stroke-width="1.5"/>
+          <line x1="462" y1="320" x2="462" y2="355" stroke="#e8d5a8" stroke-width="1.5"/>
+          <!-- Basket bottom -->
+          <circle cx="260" cy="370" r="10" fill="none" stroke="#e8d5a8" stroke-width="2"/>
+          <line x1="235" y1="370" x2="285" y2="370" stroke="#e8d5a8" stroke-width="1.5"/>
+
+          <!-- Lane shading -->
+          <rect x="20" y="100" width="155" height="150" fill="rgba(42,106,232,.08)"/>
+          <rect x="175" y="100" width="170" height="150" fill="rgba(224,58,46,.08)"/>
+          <rect x="345" y="100" width="155" height="150" fill="rgba(39,174,96,.08)"/>
+          <!-- Lane labels on dark backing strips -->
+          <rect x="50" y="178" width="94" height="14" rx="2" fill="rgba(0,0,0,.45)"/>
+          <text x="97" y="189" text-anchor="middle" fill="#7db3ff" font-family="DM Mono" font-size="9" letter-spacing="1">LEFT LANE</text>
+          <rect x="220" y="178" width="80" height="14" rx="2" fill="rgba(0,0,0,.45)"/>
+          <text x="260" y="189" text-anchor="middle" fill="#ff9080" font-family="DM Mono" font-size="9" letter-spacing="1">MIDDLE</text>
+          <rect x="372" y="178" width="100" height="14" rx="2" fill="rgba(0,0,0,.45)"/>
+          <text x="422" y="189" text-anchor="middle" fill="#2ecc71" font-family="DM Mono" font-size="9" letter-spacing="1">RIGHT LANE</text>
+
+          <!-- 5 at defensive basket (rebounder/inbounder) -->
+          <g class="pc" data-l="5 — REBOUNDER / INBOUNDER" data-t="5 grabs the rebound or inbounds after a score. First action: outlet to 1 sprinting to the right sideline. Wootten: chin the ball, pivot strong, outlet fast.">
+            <circle cx="260" cy="48" r="18" fill="#9b59b6" stroke="#c39bd3" stroke-width="2"/>
+            <text x="260" y="54" text-anchor="middle" fill="white" font-family="Bebas Neue" font-size="17">5</text>
+          </g>
+
+          <!-- 1 sprinting to right outlet -->
+          <path d="M460 188 L460 148" stroke="#f0b429" stroke-width="2" fill="none" marker-end="url(#au1)"/>
+          <g class="pc" data-l="1 — POINT GUARD (Outlet)" data-t="PG sprints to right sideline outlet position. Whichever side 1 catches on becomes the STRONG SIDE. Everything downstream is governed by this.">
+            <circle cx="460" cy="196" r="18" fill="#f0b429" stroke="#ffd060" stroke-width="2"/>
+            <text x="460" y="202" text-anchor="middle" fill="#0d1017" font-family="Bebas Neue" font-size="17">1</text>
+          </g>
+
+          <!-- Outlet pass 5→1 -->
+          <line x1="273" y1="56" x2="446" y2="180" stroke="#f0b429" stroke-width="2" stroke-dasharray="8,5" marker-end="url(#au1)"/>
+          <rect x="328" y="88" width="52" height="13" rx="2" fill="rgba(0,0,0,.5)" transform="rotate(-30 354 94)"/>
+          <text x="384" y="106" fill="#f0b429" font-family="DM Mono" font-size="9" font-weight="600" transform="rotate(-30 384 106)">OUTLET</text>
+
+          <!-- 2: right lane → right corner -->
+          <path d="M460 230 L462 345" stroke="#27ae60" stroke-width="2.5" fill="none" marker-end="url(#ag1)"/>
+          <g class="pc" data-l="2 — RIGHT WING → RIGHT CORNER" data-t="2 sprints the right sideline all the way to the RIGHT CORNER. No stopping on the wing. Corner or bust — land at baseline depth near the 3pt corner.">
+            <circle cx="460" cy="240" r="18" fill="#27ae60" stroke="#2ecc71" stroke-width="2"/>
+            <text x="460" y="246" text-anchor="middle" fill="white" font-family="Bebas Neue" font-size="17">2</text>
+          </g>
+
+          <!-- 3: left lane → left corner -->
+          <path d="M60 230 L58 345" stroke="#2a6ae8" stroke-width="2.5" fill="none" marker-end="url(#ab1)"/>
+          <g class="pc" data-l="3 — LEFT WING → LEFT CORNER" data-t="3 sprints the left sideline all the way to the LEFT CORNER. Same rule as 2: run all the way to the baseline corner.">
+            <circle cx="60" cy="240" r="18" fill="#2a6ae8" stroke="#7db3ff" stroke-width="2"/>
+            <text x="60" y="246" text-anchor="middle" fill="white" font-family="Bebas Neue" font-size="17">3</text>
+          </g>
+
+          <!-- 4: middle lane → rim -->
+          <path d="M260 200 L260 310" stroke="#e03a2e" stroke-width="2.5" fill="none" marker-end="url(#ar1)"/>
+          <g class="pc" data-l="4 — RIM RUNNER (Middle Lane)" data-t="4 sprints the middle lane straight to the rim. Primary scoring threat. The entire fast break spacing is designed to keep this lane open.">
+            <circle cx="260" cy="190" r="18" fill="#e03a2e" stroke="#ff7b6e" stroke-width="2"/>
+            <text x="260" y="196" text-anchor="middle" fill="white" font-family="Bebas Neue" font-size="17">4</text>
+          </g>
+
+          <!-- Corner destination dots -->
+          <circle cx="462" cy="355" r="10" fill="rgba(39,174,96,.2)" stroke="rgba(39,174,96,.6)" stroke-width="1.5" stroke-dasharray="3,2"/>
+          <circle cx="58" cy="355" r="10" fill="rgba(42,106,232,.2)" stroke="rgba(42,106,232,.6)" stroke-width="1.5" stroke-dasharray="3,2"/>
+          <circle cx="260" cy="340" r="10" fill="rgba(224,58,46,.2)" stroke="rgba(224,58,46,.6)" stroke-width="1.5" stroke-dasharray="3,2"/>
+
+          <rect x="60" y="472" width="400" height="28" rx="2" fill="rgba(0,0,0,.55)"/>
+          <text x="260" y="484" text-anchor="middle" fill="#f0b429" font-family="DM Mono" font-size="10" font-weight="600">OUTLET · Establish strong side · Lanes loaded</text>
+          <text x="260" y="496" text-anchor="middle" fill="#e8d5a8" font-family="DM Mono" font-size="9">Wings run to baseline corners · 4 rim-runs middle</text>
+        </svg>
+      </div>
+
+      <!-- ───────── PHASE 2: Push – Wings to Corners ───────── -->
+      <div class="phase-diagram" id="pd-2">
+        <svg class="cs" viewBox="0 0 520 420" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="ag2" markerWidth="7" markerHeight="7" refX="5" refY="2.5" orient="auto"><path d="M0,0 L0,5 L7,2.5z" fill="#27ae60"/></marker>
+            <marker id="au2" markerWidth="7" markerHeight="7" refX="5" refY="2.5" orient="auto"><path d="M0,0 L0,5 L7,2.5z" fill="#f0b429"/></marker>
+            <marker id="ar2" markerWidth="7" markerHeight="7" refX="5" refY="2.5" orient="auto"><path d="M0,0 L0,5 L7,2.5z" fill="#ff7b6e"/></marker>
+            <marker id="ab2" markerWidth="7" markerHeight="7" refX="5" refY="2.5" orient="auto"><path d="M0,0 L0,5 L7,2.5z" fill="#7db3ff"/></marker>
+            <marker id="ap2" markerWidth="7" markerHeight="7" refX="5" refY="2.5" orient="auto"><path d="M0,0 L0,5 L7,2.5z" fill="#c39bd3"/></marker>
+          </defs>
+          <!-- Half-court -->
+          <rect width="520" height="420" fill="#1a1a2e"/>
+          <rect x="20" y="18" width="480" height="384" fill="#c8a055" rx="3" stroke="#e8d5a8" stroke-width="2"/>
+          <rect x="180" y="285" width="160" height="100" fill="#b89040" stroke="#e8d5a8" stroke-width="1.5"/>
+          <line x1="180" y1="315" x2="340" y2="315" stroke="#e8d5a8" stroke-width="1"/>
+          <path d="M188 315 A72 72 0 0 1 332 315" fill="none" stroke="#e8d5a8" stroke-width="1.5"/>
+          <line x1="180" y1="285" x2="180" y2="315" stroke="#e8d5a8" stroke-width="1"/>
+          <line x1="340" y1="285" x2="340" y2="315" stroke="#e8d5a8" stroke-width="1"/>
+          <path d="M58 355 A204 204 0 0 1 462 355" fill="none" stroke="#e8d5a8" stroke-width="1.5"/>
+          <line x1="58" y1="320" x2="58" y2="355" stroke="#e8d5a8" stroke-width="1.5"/>
+          <line x1="462" y1="320" x2="462" y2="355" stroke="#e8d5a8" stroke-width="1.5"/>
+          <circle cx="260" cy="370" r="10" fill="none" stroke="#e8d5a8" stroke-width="2"/>
+          <line x1="235" y1="370" x2="285" y2="370" stroke="#e8d5a8" stroke-width="1.5"/>
+          <!-- Strong side shade -->
+          <rect x="340" y="18" width="160" height="370" fill="rgba(240,180,41,.04)"/>
+          <rect x="56" y="32" width="88" height="13" rx="2" fill="rgba(0,0,0,.45)"/>
+          <text x="396" y="42" text-anchor="middle" fill="#f0b429" font-family="DM Mono" font-size="9">STRONG SIDE</text>
+          <rect x="20" y="18" width="160" height="370" fill="rgba(42,106,232,.04)"/>
+          <rect x="352" y="32" width="88" height="13" rx="2" fill="rgba(0,0,0,.45)"/>
+          <text x="100" y="42" text-anchor="middle" fill="#7db3ff" font-family="DM Mono" font-size="9">WEAK SIDE</text>
+
+          <!-- 1 pushes middle with ball -->
+          <path d="M456 108 Q380 180 310 255" stroke="#f0b429" stroke-width="2.5" fill="none" marker-end="url(#au2)"/>
+          <g class="pc" data-l="1 — ATTACKS MIDDLE" data-t="After catching the outlet, 1 immediately angles middle. Never dribble up the sideline. This collapses the defense and opens the rim runner.">
+            <circle cx="460" cy="100" r="18" fill="#f0b429" stroke="#ffd060" stroke-width="2"/>
+            <text x="460" y="106" text-anchor="middle" fill="#0d1017" font-family="Bebas Neue" font-size="17">1</text>
+          </g>
+          <circle cx="443" cy="108" r="6" fill="#ff6b00" stroke="white" stroke-width="1.5"/>
+
+          <!-- 2: sprinting right sideline → right corner (baseline) -->
+          <path d="M462 140 L462 345" stroke="#27ae60" stroke-width="2.5" fill="none" marker-end="url(#ag2)"/>
+          <g class="pc" data-l="2 — SPRINTING TO RIGHT CORNER" data-t="2 runs the right sideline straight to the right corner. They land at baseline depth, at the 3pt corner. Hands ready, in triple-threat position.">
+            <circle cx="462" cy="130" r="18" fill="#27ae60" stroke="#2ecc71" stroke-width="2"/>
+            <text x="462" y="136" text-anchor="middle" fill="white" font-family="Bebas Neue" font-size="17">2</text>
+          </g>
+
+          <!-- 3: sprinting left sideline → left corner (baseline) -->
+          <path d="M58 140 L58 345" stroke="#2a6ae8" stroke-width="2.5" fill="none" marker-end="url(#ab2)"/>
+          <g class="pc" data-l="3 — SPRINTING TO LEFT CORNER" data-t="3 runs the left sideline straight to the left corner — weak side baseline. Same rule: run all the way.">
+            <circle cx="58" cy="130" r="18" fill="#2a6ae8" stroke="#7db3ff" stroke-width="2"/>
+            <text x="58" y="136" text-anchor="middle" fill="white" font-family="Bebas Neue" font-size="17">3</text>
+          </g>
+
+          <!-- 4: rim runner at basket -->
+          <path d="M260 115 L260 305" stroke="#e03a2e" stroke-width="2.5" fill="none" marker-end="url(#ar2)"/>
+          <g class="pc" data-l="4 — RIM RUNNER arriving at basket" data-t="4 is arriving at the rim — the primary scoring look. If 1 can deliver the pass here for a layup, that is always the first option.">
+            <circle cx="260" cy="105" r="18" fill="#e03a2e" stroke="#ff7b6e" stroke-width="2"/>
+            <text x="260" y="111" text-anchor="middle" fill="white" font-family="Bebas Neue" font-size="17">4</text>
+          </g>
+
+          <!-- 5 trailing -->
+          <path d="M260 48 L260 80" stroke="#c39bd3" stroke-width="2" fill="none" stroke-dasharray="5,4" marker-end="url(#ap2)"/>
+          <g class="pc" data-l="5 — TRAILER (reading the play)" data-t="5 trails last — intentional. They are reading: Does 4 score? If not, they will flow into 1's vacated slot once 1 passes and cuts.">
+            <circle cx="260" cy="38" r="18" fill="#9b59b6" stroke="#c39bd3" stroke-width="2"/>
+            <text x="260" y="44" text-anchor="middle" fill="white" font-family="Bebas Neue" font-size="17">5</text>
+          </g>
+
+          <!-- Primary pass option: 1→4 rim -->
+          <line x1="445" y1="160" x2="270" y2="292" stroke="rgba(224,58,46,.55)" stroke-width="2" stroke-dasharray="7,4" marker-end="url(#ar2)"/>
+          <rect x="320" y="188" width="72" height="13" rx="2" fill="rgba(0,0,0,.55)" transform="rotate(-52 356 194)"/>
+          <text x="370" y="205" fill="#ff9080" font-family="DM Mono" font-size="9" font-weight="600" transform="rotate(-52 370 205)">FIRST LOOK</text>
+
+          <!-- Corner arrival markers -->
+          <circle cx="462" cy="355" r="12" fill="rgba(39,174,96,.18)" stroke="rgba(39,174,96,.6)" stroke-width="1.5" stroke-dasharray="3,2"/>
+          <circle cx="58" cy="355" r="12" fill="rgba(42,106,232,.18)" stroke="rgba(42,106,232,.6)" stroke-width="1.5" stroke-dasharray="3,2"/>
+
+          <rect x="60" y="396" width="400" height="16" rx="2" fill="rgba(0,0,0,.55)"/>
+          <text x="260" y="407" text-anchor="middle" fill="#f0b429" font-family="DM Mono" font-size="10" font-weight="600">PUSH · 1 attacks middle · First look: 4 at rim</text>
+        </svg>
+      </div>
+
+      <!-- ───────── PHASE 3: PG → Strong Elbow → Opp Corner ───────── -->
+      <div class="phase-diagram" id="pd-3">
+        <svg class="cs" viewBox="0 0 520 420" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="au3" markerWidth="7" markerHeight="7" refX="5" refY="2.5" orient="auto"><path d="M0,0 L0,5 L7,2.5z" fill="#f0b429"/></marker>
+            <marker id="at3" markerWidth="7" markerHeight="7" refX="5" refY="2.5" orient="auto"><path d="M0,0 L0,5 L7,2.5z" fill="#1abc9c"/></marker>
+            <marker id="ag3" markerWidth="7" markerHeight="7" refX="5" refY="2.5" orient="auto"><path d="M0,0 L0,5 L7,2.5z" fill="#27ae60"/></marker>
+            <marker id="ab3" markerWidth="7" markerHeight="7" refX="5" refY="2.5" orient="auto"><path d="M0,0 L0,5 L7,2.5z" fill="#7db3ff"/></marker>
+            <marker id="ar3" markerWidth="7" markerHeight="7" refX="5" refY="2.5" orient="auto"><path d="M0,0 L0,5 L7,2.5z" fill="#ff7b6e"/></marker>
+          </defs>
+          <rect width="520" height="420" fill="#1a1a2e"/>
+          <rect x="20" y="18" width="480" height="384" fill="#c8a055" rx="3" stroke="#e8d5a8" stroke-width="2"/>
+          <rect x="180" y="285" width="160" height="100" fill="#b89040" stroke="#e8d5a8" stroke-width="1.5"/>
+          <line x1="180" y1="315" x2="340" y2="315" stroke="#e8d5a8" stroke-width="1"/>
+          <path d="M188 315 A72 72 0 0 1 332 315" fill="none" stroke="#e8d5a8" stroke-width="1.5"/>
+          <line x1="180" y1="285" x2="180" y2="315" stroke="#e8d5a8" stroke-width="1"/>
+          <line x1="340" y1="285" x2="340" y2="315" stroke="#e8d5a8" stroke-width="1"/>
+          <path d="M58 355 A204 204 0 0 1 462 355" fill="none" stroke="#e8d5a8" stroke-width="1.5"/>
+          <line x1="58" y1="320" x2="58" y2="355" stroke="#e8d5a8" stroke-width="1.5"/>
+          <line x1="462" y1="320" x2="462" y2="355" stroke="#e8d5a8" stroke-width="1.5"/>
+          <circle cx="260" cy="370" r="10" fill="none" stroke="#e8d5a8" stroke-width="2"/>
+          <line x1="235" y1="370" x2="285" y2="370" stroke="#e8d5a8" stroke-width="1.5"/>
+
+          <!-- Elbow highlights -->
+          <circle cx="340" cy="285" r="16" fill="rgba(240,180,41,.14)" stroke="rgba(240,180,41,.5)" stroke-width="1.5" stroke-dasharray="4,3"/>
+          <rect x="290" y="256" width="100" height="25" rx="2" fill="rgba(0,0,0,.6)"/>
+          <text x="340" y="266" text-anchor="middle" fill="#f0b429" font-family="DM Mono" font-size="9" font-weight="600">STRONG ELBOW</text>
+          <text x="340" y="278" text-anchor="middle" fill="#f0b429" font-family="DM Mono" font-size="9">READ POINT</text>
+
+          <!-- 2 already in right corner with ball -->
+          <g class="pc" data-l="2 — RIGHT CORNER (received pass from 1)" data-t="2 is in the right corner. 1 passed here — establishing the strong side. Now 1 follows the pass to the strong-side elbow.">
+            <circle cx="462" cy="355" r="18" fill="#27ae60" stroke="#2ecc71" stroke-width="2"/>
+            <text x="462" y="361" text-anchor="middle" fill="white" font-family="Bebas Neue" font-size="17">2</text>
+          </g>
+          <circle cx="445" cy="362" r="6" fill="#ff6b00" stroke="white" stroke-width="1.5"/>
+
+          <!-- 3 in left corner -->
+          <g class="pc" data-l="3 — LEFT CORNER (weak side)" data-t="3 is in the weak-side left corner, arrived from the break. They hold this spot for now — they will lift in Phase 4.">
+            <circle cx="58" cy="355" r="18" fill="#2a6ae8" stroke="#7db3ff" stroke-width="2"/>
+            <text x="58" y="361" text-anchor="middle" fill="white" font-family="Bebas Neue" font-size="17">3</text>
+          </g>
+
+          <!-- 4 near basket -->
+          <g class="pc" data-l="4 — NEAR BASKET (no layup)" data-t="4 did not receive the layup pass. They settle near the block, reading where to go in Princeton spacing.">
+            <circle cx="300" cy="360" r="18" fill="#e03a2e" stroke="#ff7b6e" stroke-width="2"/>
+            <text x="300" y="366" text-anchor="middle" fill="white" font-family="Bebas Neue" font-size="17">4</text>
+          </g>
+
+          <!-- 5 trailing, approaching front court -->
+          <g class="pc" data-l="5 — TRAILER approaching" data-t="5 is reading. They will fill 1's vacated slot once 1 passes and cuts through.">
+            <circle cx="260" cy="170" r="18" fill="#9b59b6" stroke="#c39bd3" stroke-width="2"/>
+            <text x="260" y="176" text-anchor="middle" fill="white" font-family="Bebas Neue" font-size="17">5</text>
+          </g>
+
+          <!-- 1: was at mid, passed to 2, now follows to strong elbow then cuts opposite corner -->
+          <!-- Step 1: 1 follows pass to right elbow -->
+          <path d="M400 220 Q380 260 342 283" stroke="#f0b429" stroke-width="2.5" fill="none" marker-end="url(#au3)"/>
+          <!-- Step 2: 1 cuts elbow → left corner (opposite) -->
+          <path d="M340 285 Q240 300 78 353" stroke="#1abc9c" stroke-width="2.5" fill="none" stroke-dasharray="8,4" marker-end="url(#at3)"/>
+
+          <g class="pc" data-l="1 — FOLLOWS PASS to strong elbow, then cuts opposite corner" data-t="KEY MOVE: 1 passes to 2 in the right corner, follows the pass to the STRONG-SIDE ELBOW (right). This is the read point — if open, receive and drive. If not, continue the cut through the paint to the OPPOSITE (left) corner below 3. This clears the strong side for 5 to fill.">
+            <circle cx="400" cy="212" r="18" fill="#f0b429" stroke="#ffd060" stroke-width="2"/>
+            <text x="400" y="218" text-anchor="middle" fill="#0d1017" font-family="Bebas Neue" font-size="17">1</text>
+          </g>
+
+          <!-- Labels with backing rects -->
+          <rect x="310" y="240" width="120" height="13" rx="2" fill="rgba(0,0,0,.55)"/>
+          <text x="370" y="250" text-anchor="middle" fill="#f0b429" font-family="DM Mono" font-size="9" font-weight="600">① FOLLOW → ELBOW</text>
+          <rect x="108" y="298" width="138" height="13" rx="2" fill="rgba(0,0,0,.55)"/>
+          <text x="177" y="308" text-anchor="middle" fill="#1abc9c" font-family="DM Mono" font-size="9" font-weight="600">② CUT → OPP CORNER</text>
+
+          <!-- 1 destination -->
+          <circle cx="58" cy="355" r="26" fill="rgba(240,180,41,.08)" stroke="rgba(240,180,41,.35)" stroke-width="1" stroke-dasharray="4,3"/>
+          <rect x="26" y="382" width="64" height="13" rx="2" fill="rgba(0,0,0,.55)"/>
+          <text x="58" y="392" text-anchor="middle" fill="#f0b429" font-family="DM Mono" font-size="9" font-weight="600">1 LANDS</text>
+
+          <rect x="32" y="396" width="456" height="14" rx="2" fill="rgba(0,0,0,.55)"/>
+          <text x="260" y="407" text-anchor="middle" fill="#f0b429" font-family="DM Mono" font-size="10" font-weight="600">1 follows → STRONG ELBOW → reads → cuts to OPPOSITE CORNER</text>
+        </svg>
+      </div>
+
+      <!-- ───────── PHASE 4: 5 fills 1's slot · 3 lifts simultaneously ───────── -->
+      <div class="phase-diagram" id="pd-4">
+        <svg class="cs" viewBox="0 0 520 420" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="au4" markerWidth="7" markerHeight="7" refX="5" refY="2.5" orient="auto"><path d="M0,0 L0,5 L7,2.5z" fill="#f0b429"/></marker>
+            <marker id="at4" markerWidth="7" markerHeight="7" refX="5" refY="2.5" orient="auto"><path d="M0,0 L0,5 L7,2.5z" fill="#1abc9c"/></marker>
+            <marker id="ap4" markerWidth="7" markerHeight="7" refX="5" refY="2.5" orient="auto"><path d="M0,0 L0,5 L7,2.5z" fill="#c39bd3"/></marker>
+            <marker id="ab4" markerWidth="7" markerHeight="7" refX="5" refY="2.5" orient="auto"><path d="M0,0 L0,5 L7,2.5z" fill="#7db3ff"/></marker>
+            <marker id="ar4" markerWidth="7" markerHeight="7" refX="5" refY="2.5" orient="auto"><path d="M0,0 L0,5 L7,2.5z" fill="#ff7b6e"/></marker>
+            <marker id="ag4" markerWidth="7" markerHeight="7" refX="5" refY="2.5" orient="auto"><path d="M0,0 L0,5 L7,2.5z" fill="#27ae60"/></marker>
+          </defs>
+          <rect width="520" height="420" fill="#1a1a2e"/>
+          <rect x="20" y="18" width="480" height="384" fill="#c8a055" rx="3" stroke="#e8d5a8" stroke-width="2"/>
+          <rect x="180" y="285" width="160" height="100" fill="#b89040" stroke="#e8d5a8" stroke-width="1.5"/>
+          <line x1="180" y1="315" x2="340" y2="315" stroke="#e8d5a8" stroke-width="1"/>
+          <path d="M188 315 A72 72 0 0 1 332 315" fill="none" stroke="#e8d5a8" stroke-width="1.5"/>
+          <line x1="180" y1="285" x2="180" y2="315" stroke="#e8d5a8" stroke-width="1"/>
+          <line x1="340" y1="285" x2="340" y2="315" stroke="#e8d5a8" stroke-width="1"/>
+          <path d="M58 355 A204 204 0 0 1 462 355" fill="none" stroke="#e8d5a8" stroke-width="1.5"/>
+          <line x1="58" y1="320" x2="58" y2="355" stroke="#e8d5a8" stroke-width="1.5"/>
+          <line x1="462" y1="320" x2="462" y2="355" stroke="#e8d5a8" stroke-width="1.5"/>
+          <circle cx="260" cy="370" r="10" fill="none" stroke="#e8d5a8" stroke-width="2"/>
+          <line x1="235" y1="370" x2="285" y2="370" stroke="#e8d5a8" stroke-width="1.5"/>
+
+          <!-- Ghost: where 1 WAS (strong elbow) -->
+          <circle cx="340" cy="285" r="18" fill="rgba(240,180,41,.07)" stroke="rgba(240,180,41,.35)" stroke-width="1.5" stroke-dasharray="4,3"/>
+          <rect x="296" y="259" width="88" height="13" rx="2" fill="rgba(0,0,0,.55)"/>
+          <text x="340" y="269" text-anchor="middle" fill="#f0b429" font-family="DM Mono" font-size="9" font-weight="600">1 WAS HERE</text>
+
+          <!-- Ghost: where 3 WAS (left corner) -->
+          <circle cx="58" cy="355" r="18" fill="rgba(42,106,232,.07)" stroke="rgba(42,106,232,.35)" stroke-width="1.5" stroke-dasharray="4,3"/>
+          <rect x="14" y="376" width="88" height="13" rx="2" fill="rgba(0,0,0,.55)"/>
+          <text x="58" y="386" text-anchor="middle" fill="#7db3ff" font-family="DM Mono" font-size="9" font-weight="600">3 WAS HERE</text>
+
+          <!-- Simultaneous banner -->
+          <rect x="115" y="126" width="290" height="22" fill="rgba(0,0,0,.6)" stroke="rgba(27,188,156,.5)" stroke-width="1" rx="2"/>
+          <text x="260" y="141" text-anchor="middle" fill="#1abc9c" font-family="DM Mono" font-size="10" font-weight="600">⟳ SIMULTANEOUS: 5 fills · 3 lifts</text>
+
+          <!-- 2 in right corner, ball, no shot -->
+          <g class="pc" data-l="2 — RIGHT CORNER · No shot, holds" data-t="2 holds the strong-side right corner. Defense closed out — no shot. 2 waits for 5 to arrive in the slot above, then swings the ball.">
+            <circle cx="462" cy="355" r="18" fill="#27ae60" stroke="#2ecc71" stroke-width="2"/>
+            <text x="462" y="361" text-anchor="middle" fill="white" font-family="Bebas Neue" font-size="17">2</text>
+          </g>
+          <circle cx="445" cy="362" r="6" fill="#ff6b00" stroke="white" stroke-width="1.5"/>
+          <text x="462" y="378" text-anchor="middle" fill="#e03a2e" font-family="Bebas Neue" font-size="13">X</text>
+
+          <!-- 1 cutting through paint toward left (opposite) corner -->
+          <path d="M340 285 Q240 310 80 353" stroke="#f0b429" stroke-width="2" fill="none" stroke-dasharray="7,4" marker-end="url(#au4)"/>
+          <g class="pc" data-l="1 — CUTTING to opposite (left) corner" data-t="1 is mid-cut through the paint, heading to the opposite left corner. As 1 exits the strong-side elbow, 5 steps directly into that vacated space.">
+            <circle cx="340" cy="285" r="18" fill="#f0b429" stroke="#ffd060" stroke-width="2"/>
+            <text x="340" y="291" text-anchor="middle" fill="#0d1017" font-family="Bebas Neue" font-size="17">1</text>
+          </g>
+          <!-- 1 destination -->
+          <circle cx="72" cy="355" r="14" fill="rgba(240,180,41,.12)" stroke="rgba(240,180,41,.5)" stroke-width="1" stroke-dasharray="3,2"/>
+          <rect x="38" y="340" width="68" height="12" rx="2" fill="rgba(0,0,0,.55)"/>
+          <text x="72" y="349" text-anchor="middle" fill="#f0b429" font-family="DM Mono" font-size="9" font-weight="600">1 LANDS</text>
+
+          <!-- 4 on block -->
+          <g class="pc" data-l="4 — WEAK SIDE BLOCK" data-t="4 settles on the weak-side block — the only interior player in the 4-out set.">
+            <circle cx="218" cy="360" r="18" fill="#e03a2e" stroke="#ff7b6e" stroke-width="2"/>
+            <text x="218" y="366" text-anchor="middle" fill="white" font-family="Bebas Neue" font-size="17">4</text>
+          </g>
+
+          <!-- 5: trails into 1's vacated strong-side elbow/wing slot (cx=340 cy=205) -->
+          <!-- Arrow starts at bottom edge of 5 circle (260,165) and ends at top edge of destination circle (340,187) -->
+          <path d="M278 158 Q320 165 340 187" stroke="#c39bd3" stroke-width="2.5" fill="none" marker-end="url(#ap4)"/>
+          <g class="pc" data-l="5 — TRAILER fills 1's vacated strong-side slot (right elbow/wing)" data-t="5 reads 1 cutting away and flows directly into the exact slot 1 vacated — the right elbow/wing area, above the 3pt line vertically aligned with the right elbow. 5 does not create a new slot; they inherit 1's space.">
+            <circle cx="260" cy="147" r="18" fill="#9b59b6" stroke="#c39bd3" stroke-width="2"/>
+            <text x="260" y="153" text-anchor="middle" fill="white" font-family="Bebas Neue" font-size="17">5</text>
+          </g>
+          <!-- 5 destination -->
+          <circle cx="340" cy="205" r="18" fill="rgba(155,89,182,.18)" stroke="rgba(155,89,182,.65)" stroke-width="1.5" stroke-dasharray="4,3"/>
+          <rect x="296" y="178" width="88" height="22" rx="2" fill="rgba(0,0,0,.6)"/>
+          <text x="340" y="188" text-anchor="middle" fill="#c39bd3" font-family="DM Mono" font-size="9" font-weight="600">5 FILLS</text>
+          <text x="340" y="198" text-anchor="middle" fill="#c39bd3" font-family="DM Mono" font-size="9">TOP BALL-SIDE</text>
+
+          <!-- 3: lifts from left corner → left elbow/wing area (cx=180 cy=205) -->
+          <path d="M58 337 Q80 270 178 212" stroke="#7db3ff" stroke-width="2.5" fill="none" marker-end="url(#ab4)"/>
+          <g class="pc" data-l="3 — LIFTS from left corner → opposite top slot (left elbow/wing)" data-t="SIMULTANEOUSLY: 3 lifts from the weak-side left corner to the opposite top slot — left elbow/wing area above the 3pt line, vertically aligned with the left elbow. This fills the Princeton weak-side top position. Both 5 and 3 move at the exact same moment.">
+            <circle cx="58" cy="345" r="18" fill="#2a6ae8" stroke="#7db3ff" stroke-width="2"/>
+            <text x="58" y="351" text-anchor="middle" fill="white" font-family="Bebas Neue" font-size="17">3</text>
+          </g>
+          <!-- 3 destination -->
+          <circle cx="180" cy="205" r="18" fill="rgba(42,106,232,.18)" stroke="rgba(42,106,232,.65)" stroke-width="1.5" stroke-dasharray="4,3"/>
+          <rect x="136" y="178" width="88" height="22" rx="2" fill="rgba(0,0,0,.6)"/>
+          <text x="180" y="188" text-anchor="middle" fill="#7db3ff" font-family="DM Mono" font-size="9" font-weight="600">3 LIFTS</text>
+          <text x="180" y="198" text-anchor="middle" fill="#7db3ff" font-family="DM Mono" font-size="9">TOP WEAK-SIDE</text>
+
+          <!-- Swing pass: 2→5 -->
+          <line x1="445" y1="345" x2="352" y2="215" stroke="rgba(155,89,182,.65)" stroke-width="1.8" stroke-dasharray="5,4" marker-end="url(#ap4)"/>
+          <rect x="382" y="260" width="62" height="13" rx="2" fill="rgba(0,0,0,.55)"/>
+          <text x="413" y="270" text-anchor="middle" fill="#c39bd3" font-family="DM Mono" font-size="9" font-weight="600">SWING→5</text>
+
+          <rect x="32" y="396" width="456" height="14" rx="2" fill="rgba(0,0,0,.55)"/>
+          <text x="260" y="407" text-anchor="middle" fill="#f0b429" font-family="DM Mono" font-size="10" font-weight="600">5 inherits 1's slot · 3 lifts simultaneously · 4-out almost set</text>
+        </svg>
+      </div>
+
+      <!-- ───────── PHASE 5: Princeton 4-Out Set · 4 to strong elbow ───────── -->
+      <div class="phase-diagram" id="pd-5">
+        <svg class="cs" viewBox="0 0 520 420" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="au5" markerWidth="7" markerHeight="7" refX="5" refY="2.5" orient="auto"><path d="M0,0 L0,5 L7,2.5z" fill="#f0b429"/></marker>
+            <marker id="ar5" markerWidth="7" markerHeight="7" refX="5" refY="2.5" orient="auto"><path d="M0,0 L0,5 L7,2.5z" fill="#ff7b6e"/></marker>
+            <marker id="ap5" markerWidth="7" markerHeight="7" refX="5" refY="2.5" orient="auto"><path d="M0,0 L0,5 L7,2.5z" fill="#c39bd3"/></marker>
+            <marker id="ag5" markerWidth="7" markerHeight="7" refX="5" refY="2.5" orient="auto"><path d="M0,0 L0,5 L7,2.5z" fill="#27ae60"/></marker>
+            <marker id="ab5" markerWidth="7" markerHeight="7" refX="5" refY="2.5" orient="auto"><path d="M0,0 L0,5 L7,2.5z" fill="#7db3ff"/></marker>
+          </defs>
+          <rect width="520" height="420" fill="#1a1a2e"/>
+          <rect x="20" y="18" width="480" height="384" fill="#c8a055" rx="3" stroke="#e8d5a8" stroke-width="2"/>
+          <!-- 3pt arc -->
+          <path d="M58 355 A204 204 0 0 1 462 355" fill="none" stroke="#e8d5a8" stroke-width="1.5"/>
+          <line x1="58" y1="320" x2="58" y2="355" stroke="#e8d5a8" stroke-width="1.5"/>
+          <line x1="462" y1="320" x2="462" y2="355" stroke="#e8d5a8" stroke-width="1.5"/>
+          <!-- Key -->
+          <rect x="180" y="285" width="160" height="100" fill="#b89040" stroke="#e8d5a8" stroke-width="1.5"/>
+          <line x1="180" y1="315" x2="340" y2="315" stroke="#e8d5a8" stroke-width="1"/>
+          <path d="M188 315 A72 72 0 0 1 332 315" fill="none" stroke="#e8d5a8" stroke-width="1.5"/>
+          <line x1="180" y1="285" x2="180" y2="315" stroke="#e8d5a8" stroke-width="1"/>
+          <line x1="340" y1="285" x2="340" y2="315" stroke="#e8d5a8" stroke-width="1"/>
+          <circle cx="260" cy="370" r="10" fill="none" stroke="#e8d5a8" stroke-width="2"/>
+          <line x1="235" y1="370" x2="285" y2="370" stroke="#e8d5a8" stroke-width="1.5"/>
+
+          <!-- 4-out spot halos -->
+          <circle cx="340" cy="205" r="22" fill="rgba(155,89,182,.07)" stroke="rgba(155,89,182,.28)" stroke-width="1" stroke-dasharray="4,3"/>
+          <circle cx="180" cy="205" r="22" fill="rgba(42,106,232,.07)" stroke="rgba(42,106,232,.28)" stroke-width="1" stroke-dasharray="4,3"/>
+          <circle cx="462" cy="355" r="22" fill="rgba(39,174,96,.07)" stroke="rgba(39,174,96,.28)" stroke-width="1" stroke-dasharray="4,3"/>
+          <circle cx="58" cy="355" r="22" fill="rgba(240,180,41,.07)" stroke="rgba(240,180,41,.28)" stroke-width="1" stroke-dasharray="4,3"/>
+
+          <!-- Spot labels with backing rects -->
+          <rect x="282" y="164" width="116" height="13" rx="2" fill="rgba(0,0,0,.6)"/>
+          <text x="340" y="174" text-anchor="middle" fill="#c39bd3" font-family="DM Mono" font-size="9" font-weight="600">TOP BALL-SIDE</text>
+          <rect x="122" y="164" width="116" height="13" rx="2" fill="rgba(0,0,0,.6)"/>
+          <text x="180" y="174" text-anchor="middle" fill="#7db3ff" font-family="DM Mono" font-size="9" font-weight="600">TOP WEAK-SIDE</text>
+          <rect x="400" y="330" width="124" height="13" rx="2" fill="rgba(0,0,0,.6)"/>
+          <text x="462" y="340" text-anchor="middle" fill="#2ecc71" font-family="DM Mono" font-size="9" font-weight="600">STRONG CORNER</text>
+          <rect x="20" y="330" width="76" height="13" rx="2" fill="rgba(0,0,0,.6)"/>
+          <text x="58" y="340" text-anchor="middle" fill="#f0b429" font-family="DM Mono" font-size="9" font-weight="600">WEAK CORNER</text>
+
+          <!-- 5 at top ball-side (right elbow above 3pt) — has ball -->
+          <g class="pc" data-l="5 — TOP BALL-SIDE · Princeton entry" data-t="5 is now the Princeton entry passer at the top right slot, vertically above the right elbow. Ball came from 2 via swing pass. 5 reads: pass to 2 in corner, skip to 3, or trigger 1's backdoor.">
+            <circle cx="340" cy="205" r="18" fill="#9b59b6" stroke="#c39bd3" stroke-width="2"/>
+            <text x="340" y="211" text-anchor="middle" fill="white" font-family="Bebas Neue" font-size="17">5</text>
+          </g>
+          <circle cx="323" cy="212" r="6" fill="#ff6b00" stroke="white" stroke-width="1.5"/>
+
+          <!-- 3 at top weak-side (left elbow above 3pt) -->
+          <g class="pc" data-l="3 — TOP WEAK-SIDE · Left elbow slot" data-t="3 has lifted from the left corner to the top weak-side slot — above the left elbow, vertically aligned with the key. Primary backdoor cutter if overplayed.">
+            <circle cx="180" cy="205" r="18" fill="#2a6ae8" stroke="#7db3ff" stroke-width="2"/>
+            <text x="180" y="211" text-anchor="middle" fill="white" font-family="Bebas Neue" font-size="17">3</text>
+          </g>
+
+          <!-- 2 at right corner -->
+          <g class="pc" data-l="2 — STRONG SIDE CORNER (right)" data-t="2 remains in the right baseline corner — the strong-side corner. Shot ready. Princeton action can swing back to 2 for a corner 3.">
+            <circle cx="462" cy="355" r="18" fill="#27ae60" stroke="#2ecc71" stroke-width="2"/>
+            <text x="462" y="361" text-anchor="middle" fill="white" font-family="Bebas Neue" font-size="17">2</text>
+          </g>
+
+          <!-- 1 at left (opposite / weak) corner -->
+          <g class="pc" data-l="1 — WEAK CORNER (left) · arrived from elbow cut" data-t="1 completed the cut from the strong-side elbow through the paint and landed in the left (weak) corner. They are now a Princeton perimeter receiver, ready for a backdoor or corner action.">
+            <circle cx="58" cy="355" r="18" fill="#f0b429" stroke="#ffd060" stroke-width="2"/>
+            <text x="58" y="361" text-anchor="middle" fill="#0d1017" font-family="Bebas Neue" font-size="17">1</text>
+          </g>
+
+          <!-- 4: comes from strong-side block to strong-side ELBOW -->
+          <path d="M300 360 Q320 330 340 300" stroke="#ff7b6e" stroke-width="2.5" fill="none" marker-end="url(#ar5)"/>
+          <g class="pc" data-l="4 — STRONG SIDE BLOCK → STRONG SIDE ELBOW" data-t="4 comes up from the strong-side block to the strong-side elbow (cx=340 cy=285). This gives the Princeton set a high-low threat: 5 at top, 4 at elbow, 2 in corner on the same side.">
+            <circle cx="300" cy="368" r="18" fill="#e03a2e" stroke="#ff7b6e" stroke-width="2"/>
+            <text x="300" y="374" text-anchor="middle" fill="white" font-family="Bebas Neue" font-size="17">4</text>
+          </g>
+          <!-- 4 destination: strong elbow -->
+          <circle cx="340" cy="285" r="18" fill="rgba(224,58,46,.18)" stroke="rgba(224,58,46,.65)" stroke-width="1.5" stroke-dasharray="4,3"/>
+          <rect x="358" y="272" width="116" height="13" rx="2" fill="rgba(0,0,0,.6)"/>
+          <text x="416" y="282" text-anchor="middle" fill="#ff7b6e" font-family="DM Mono" font-size="9" font-weight="600">4 → STRONG ELBOW</text>
+
+          <!-- spacing connector faint lines -->
+          <line x1="340" y1="205" x2="180" y2="205" stroke="rgba(255,255,255,.06)" stroke-width="1"/>
+          <line x1="340" y1="205" x2="462" y2="355" stroke="rgba(255,255,255,.06)" stroke-width="1"/>
+          <line x1="180" y1="205" x2="58" y2="355" stroke="rgba(255,255,255,.06)" stroke-width="1"/>
+          <line x1="58" y1="355" x2="462" y2="355" stroke="rgba(255,255,255,.06)" stroke-width="1"/>
+
+          <rect x="32" y="396" width="456" height="14" rx="2" fill="rgba(0,0,0,.55)"/>
+          <text x="260" y="407" text-anchor="middle" fill="#f0b429" font-family="DM Mono" font-size="10" font-weight="600">PRINCETON 4-OUT SET · 4 comes to strong elbow · Paint open</text>
+        </svg>
+      </div>
+
+      <!-- ───────── PHASE 6: 5 dribbles at 3 → V-cut backdoor · 1 & 2 raise ───────── -->
+      <div class="phase-diagram" id="pd-6">
+        <svg class="cs" viewBox="0 0 520 420" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="au6" markerWidth="7" markerHeight="7" refX="5" refY="2.5" orient="auto"><path d="M0,0 L0,5 L7,2.5z" fill="#f0b429"/></marker>
+            <marker id="ap6" markerWidth="7" markerHeight="7" refX="5" refY="2.5" orient="auto"><path d="M0,0 L0,5 L7,2.5z" fill="#c39bd3"/></marker>
+            <marker id="ab6" markerWidth="7" markerHeight="7" refX="5" refY="2.5" orient="auto"><path d="M0,0 L0,5 L7,2.5z" fill="#7db3ff"/></marker>
+            <marker id="ag6" markerWidth="7" markerHeight="7" refX="5" refY="2.5" orient="auto"><path d="M0,0 L0,5 L7,2.5z" fill="#27ae60"/></marker>
+            <marker id="ar6" markerWidth="7" markerHeight="7" refX="5" refY="2.5" orient="auto"><path d="M0,0 L0,5 L7,2.5z" fill="#ff7b6e"/></marker>
+            <marker id="at6" markerWidth="7" markerHeight="7" refX="5" refY="2.5" orient="auto"><path d="M0,0 L0,5 L7,2.5z" fill="#1abc9c"/></marker>
+          </defs>
+          <rect width="520" height="420" fill="#1a1a2e"/>
+          <rect x="20" y="18" width="480" height="384" fill="#c8a055" rx="3" stroke="#e8d5a8" stroke-width="2"/>
+          <path d="M58 355 A204 204 0 0 1 462 355" fill="none" stroke="#e8d5a8" stroke-width="1.5"/>
+          <line x1="58" y1="320" x2="58" y2="355" stroke="#e8d5a8" stroke-width="1.5"/>
+          <line x1="462" y1="320" x2="462" y2="355" stroke="#e8d5a8" stroke-width="1.5"/>
+          <rect x="180" y="285" width="160" height="100" fill="#b89040" stroke="#e8d5a8" stroke-width="1.5"/>
+          <line x1="180" y1="315" x2="340" y2="315" stroke="#e8d5a8" stroke-width="1"/>
+          <path d="M188 315 A72 72 0 0 1 332 315" fill="none" stroke="#e8d5a8" stroke-width="1.5"/>
+          <line x1="180" y1="285" x2="180" y2="315" stroke="#e8d5a8" stroke-width="1"/>
+          <line x1="340" y1="285" x2="340" y2="315" stroke="#e8d5a8" stroke-width="1"/>
+          <circle cx="260" cy="370" r="10" fill="none" stroke="#e8d5a8" stroke-width="2"/>
+          <line x1="235" y1="370" x2="285" y2="370" stroke="#e8d5a8" stroke-width="1.5"/>
+          <!-- Free throw line depth guide -->
+          <line x1="20" y1="315" x2="180" y2="315" stroke="rgba(255,255,255,.2)" stroke-width="1" stroke-dasharray="4,3"/>
+          <line x1="340" y1="315" x2="500" y2="315" stroke="rgba(255,255,255,.2)" stroke-width="1" stroke-dasharray="4,3"/>
+          <rect x="52" y="300" width="106" height="12" rx="2" fill="rgba(0,0,0,.55)"/>
+          <text x="105" y="309" text-anchor="middle" fill="rgba(255,255,255,.7)" font-family="DM Mono" font-size="9">FT LINE DEPTH</text>
+          <rect x="362" y="300" width="106" height="12" rx="2" fill="rgba(0,0,0,.55)"/>
+          <text x="415" y="309" text-anchor="middle" fill="rgba(255,255,255,.7)" font-family="DM Mono" font-size="9">FT LINE DEPTH</text>
+
+          <!-- 5 dribbles toward 3 (left/weak side) -->
+          <path d="M340 205 Q270 204 192 204" stroke="#c39bd3" stroke-width="2.5" fill="none" marker-end="url(#ap6)"/>
+          <g class="pc" data-l="5 — DRIBBLES AT 3 (toward weak side)" data-t="5 dribbles hard toward 3's position at the top weak-side slot. This is the Princeton 'dribble-at' action — it signals 3 to V-cut backdoor. The dribble-at is a deliberate, aggressive move, not a casual dribble.">
+            <circle cx="340" cy="205" r="18" fill="#9b59b6" stroke="#c39bd3" stroke-width="2"/>
+            <text x="340" y="211" text-anchor="middle" fill="white" font-family="Bebas Neue" font-size="17">5</text>
+          </g>
+          <circle cx="324" cy="212" r="6" fill="#ff6b00" stroke="white" stroke-width="1.5"/>
+
+          <!-- 3 V-cut: steps toward ball (fake catch), then cuts BACKDOOR to basket -->
+          <!-- Step toward: 3 at 180,205, steps to ~215,205 -->
+          <path d="M180 205 L215 205" stroke="#7db3ff" stroke-width="2" fill="none"/>
+          <!-- Backdoor cut: from ~215,205 to basket area -->
+          <path d="M215 205 Q230 260 248 330" stroke="#7db3ff" stroke-width="2.5" fill="none" stroke-dasharray="7,4" marker-end="url(#ab6)"/>
+
+          <g class="pc" data-l="3 — V-CUT → BACKDOOR to basket" data-t="3 takes ONE step toward 5 (selling the catch), then plants and cuts BACKDOOR to the basket. The V-cut is essential — one step toward ball, hard cut away. If 5's dribble-at drew the defender toward the ball, the backdoor is wide open.">
+            <circle cx="180" cy="205" r="18" fill="#2a6ae8" stroke="#7db3ff" stroke-width="2"/>
+            <text x="180" y="211" text-anchor="middle" fill="white" font-family="Bebas Neue" font-size="17">3</text>
+          </g>
+          <rect x="200" y="183" width="50" height="12" rx="2" fill="rgba(0,0,0,.55)"/>
+          <text x="225" y="192" text-anchor="middle" fill="#7db3ff" font-family="DM Mono" font-size="9" font-weight="600">① STEP</text>
+          <rect x="210" y="262" width="88" height="12" rx="2" fill="rgba(0,0,0,.55)"/>
+          <text x="254" y="271" text-anchor="middle" fill="#7db3ff" font-family="DM Mono" font-size="9" font-weight="600">② BACKDOOR</text>
+
+          <!-- 1 raises from left corner to FT-line depth on left side -->
+          <path d="M58 355 L58 315" stroke="#f0b429" stroke-width="2" fill="none" marker-end="url(#au6)"/>
+          <g class="pc" data-l="1 — RAISES from weak corner to FT-line depth (left wing)" data-t="Simultaneously: 1 raises from the weak-side left corner up to about free-throw line depth on the left side — becoming a wing/slot receiver. This clears the corner and creates a passing option if 3's backdoor is covered.">
+            <circle cx="58" cy="355" r="18" fill="#f0b429" stroke="#ffd060" stroke-width="2"/>
+            <text x="58" y="361" text-anchor="middle" fill="#0d1017" font-family="Bebas Neue" font-size="17">1</text>
+          </g>
+          <!-- 1 destination -->
+          <circle cx="58" cy="315" r="14" fill="rgba(240,180,41,.12)" stroke="rgba(240,180,41,.4)" stroke-width="1" stroke-dasharray="3,2"/>
+
+          <!-- 2 raises from right corner to FT-line depth on right side -->
+          <path d="M462 355 L462 315" stroke="#27ae60" stroke-width="2" fill="none" marker-end="url(#ag6)"/>
+          <g class="pc" data-l="2 — RAISES from strong corner to FT-line depth (right wing)" data-t="Simultaneously: 2 raises from the strong-side right corner to about free-throw line depth on the right side. This creates a ball-reversal option and keeps the defense honest across the court.">
+            <circle cx="462" cy="355" r="18" fill="#27ae60" stroke="#2ecc71" stroke-width="2"/>
+            <text x="462" y="361" text-anchor="middle" fill="white" font-family="Bebas Neue" font-size="17">2</text>
+          </g>
+          <!-- 2 destination -->
+          <circle cx="462" cy="315" r="14" fill="rgba(39,174,96,.12)" stroke="rgba(39,174,96,.4)" stroke-width="1" stroke-dasharray="3,2"/>
+
+          <!-- 4 at strong elbow -->
+          <g class="pc" data-l="4 — STRONG SIDE ELBOW (stationary)" data-t="4 holds the strong-side elbow. They are the high-post anchor and a dump-off option if 3's backdoor isn't available. They also create a screen opportunity for actions off the elbow.">
+            <circle cx="340" cy="285" r="18" fill="#e03a2e" stroke="#ff7b6e" stroke-width="2"/>
+            <text x="340" y="291" text-anchor="middle" fill="white" font-family="Bebas Neue" font-size="17">4</text>
+          </g>
+
+          <!-- Backdoor pass option from 5 -->
+          <line x1="330" y1="220" x2="252" y2="325" stroke="rgba(155,89,182,.7)" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#ap6)"/>
+          <rect x="270" y="260" width="90" height="24" rx="2" fill="rgba(0,0,0,.6)"/>
+          <text x="315" y="272" text-anchor="middle" fill="#c39bd3" font-family="DM Mono" font-size="9" font-weight="600">BACKDOOR</text>
+          <text x="315" y="282" text-anchor="middle" fill="#c39bd3" font-family="DM Mono" font-size="9">PASS</text>
+
+          <rect x="32" y="396" width="456" height="14" rx="2" fill="rgba(0,0,0,.55)"/>
+          <text x="260" y="407" text-anchor="middle" fill="#f0b429" font-family="DM Mono" font-size="10" font-weight="600">5 dribbles at 3 · 3 V-cuts BACKDOOR · 1 &amp; 2 raise to FT depth</text>
+        </svg>
+      </div>
+
+      <!-- ───────── PHASE 7: 5 Dribble Handoff to 1 → 1 back to strong wing ───────── -->
+      <div class="phase-diagram" id="pd-7">
+        <svg class="cs" viewBox="0 0 520 420" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="au7" markerWidth="7" markerHeight="7" refX="5" refY="2.5" orient="auto"><path d="M0,0 L0,5 L7,2.5z" fill="#f0b429"/></marker>
+            <marker id="ap7" markerWidth="7" markerHeight="7" refX="5" refY="2.5" orient="auto"><path d="M0,0 L0,5 L7,2.5z" fill="#c39bd3"/></marker>
+            <marker id="ab7" markerWidth="7" markerHeight="7" refX="5" refY="2.5" orient="auto"><path d="M0,0 L0,5 L7,2.5z" fill="#7db3ff"/></marker>
+            <marker id="ag7" markerWidth="7" markerHeight="7" refX="5" refY="2.5" orient="auto"><path d="M0,0 L0,5 L7,2.5z" fill="#27ae60"/></marker>
+            <marker id="ar7" markerWidth="7" markerHeight="7" refX="5" refY="2.5" orient="auto"><path d="M0,0 L0,5 L7,2.5z" fill="#ff7b6e"/></marker>
+            <marker id="at7" markerWidth="7" markerHeight="7" refX="5" refY="2.5" orient="auto"><path d="M0,0 L0,5 L7,2.5z" fill="#1abc9c"/></marker>
+          </defs>
+          <rect width="520" height="420" fill="#1a1a2e"/>
+          <rect x="20" y="18" width="480" height="384" fill="#c8a055" rx="3" stroke="#e8d5a8" stroke-width="2"/>
+          <path d="M58 355 A204 204 0 0 1 462 355" fill="none" stroke="#e8d5a8" stroke-width="1.5"/>
+          <line x1="58" y1="320" x2="58" y2="355" stroke="#e8d5a8" stroke-width="1.5"/>
+          <line x1="462" y1="320" x2="462" y2="355" stroke="#e8d5a8" stroke-width="1.5"/>
+          <rect x="180" y="285" width="160" height="100" fill="#b89040" stroke="#e8d5a8" stroke-width="1.5"/>
+          <line x1="180" y1="315" x2="340" y2="315" stroke="#e8d5a8" stroke-width="1"/>
+          <path d="M188 315 A72 72 0 0 1 332 315" fill="none" stroke="#e8d5a8" stroke-width="1.5"/>
+          <line x1="180" y1="285" x2="180" y2="315" stroke="#e8d5a8" stroke-width="1"/>
+          <line x1="340" y1="285" x2="340" y2="315" stroke="#e8d5a8" stroke-width="1"/>
+          <circle cx="260" cy="370" r="10" fill="none" stroke="#e8d5a8" stroke-width="2"/>
+          <line x1="235" y1="370" x2="285" y2="370" stroke="#e8d5a8" stroke-width="1.5"/>
+
+          <!-- 3 cleared out (after backdoor attempt, now in corner or baseline) -->
+          <g class="pc" data-l="3 — BACKDOOR CLEARED (settles in weak corner or block)" data-t="3 ran the backdoor and either scored or the pass wasn't there. 3 clears to the weak-side corner or block, out of the way for the DHO action.">
+            <circle cx="100" cy="360" r="18" fill="#2a6ae8" stroke="#7db3ff" stroke-width="2"/>
+            <text x="100" y="366" text-anchor="middle" fill="white" font-family="Bebas Neue" font-size="17">3</text>
+          </g>
+
+          <!-- 4 at strong elbow — stays -->
+          <g class="pc" data-l="4 — STRONG SIDE ELBOW (holds)" data-t="4 holds the strong-side elbow. They are the screen/dump-off anchor for the next Princeton action.">
+            <circle cx="340" cy="285" r="18" fill="#e03a2e" stroke="#ff7b6e" stroke-width="2"/>
+            <text x="340" y="291" text-anchor="middle" fill="white" font-family="Bebas Neue" font-size="17">4</text>
+          </g>
+
+          <!-- 2 at right wing / FT-line depth (stayed from raise) -->
+          <g class="pc" data-l="2 — RIGHT WING / FT-line depth" data-t="2 raised from the corner in phase 6 and holds this right-wing slot. They are a ball reversal option and the eventual receiver for Phase 8 Chin action.">
+            <circle cx="462" cy="315" r="18" fill="#27ae60" stroke="#2ecc71" stroke-width="2"/>
+            <text x="462" y="321" text-anchor="middle" fill="white" font-family="Bebas Neue" font-size="17">2</text>
+          </g>
+
+          <!-- 5 has dribbled left, arrives near top left area for DHO with 1 -->
+          <!-- 5's path: was at top right (340,205), dribbled toward 3's spot, now at ~180,205 area -->
+          <g class="pc" data-l="5 — DRIBBLE HANDOFF POSITION (left slot)" data-t="5 continued dribbling left past 3's vacated spot. 1, who raised to the left wing/FT depth, comes to meet 5 for the Dribble Handoff. 5 sets the DHO — holds the dribble, extends ball as 1 rubs off.">
+            <circle cx="180" cy="215" r="18" fill="#9b59b6" stroke="#c39bd3" stroke-width="2"/>
+            <text x="180" y="221" text-anchor="middle" fill="white" font-family="Bebas Neue" font-size="17">5</text>
+          </g>
+          <circle cx="164" cy="222" r="6" fill="#ff6b00" stroke="white" stroke-width="1.5"/>
+
+          <!-- 1: raises to meet 5 for DHO, then continues right to strong-side wing -->
+          <!-- 1 approach to DHO -->
+          <path d="M58 315 L165 215" stroke="#f0b429" stroke-width="2" fill="none" stroke-dasharray="5,3" marker-end="url(#au7)"/>
+          <!-- 1 receives DHO, dribbles right to strong-side wing -->
+          <path d="M182 215 Q290 200 400 212" stroke="#f0b429" stroke-width="2.5" fill="none" marker-end="url(#au7)"/>
+
+          <g class="pc" data-l="1 — DRIBBLE HANDOFF from 5 → dribbles to STRONG SIDE WING" data-t="1 comes from the left FT-depth to meet 5. 1 rubs off 5's body (DHO), receives the ball, and immediately dribbles back to the strong-side wing area (original strong side, right side). This resets the ball to the strong side and sets up Phase 8 Chin.">
+            <circle cx="58" cy="315" r="18" fill="#f0b429" stroke="#ffd060" stroke-width="2"/>
+            <text x="58" y="321" text-anchor="middle" fill="#0d1017" font-family="Bebas Neue" font-size="17">1</text>
+          </g>
+
+          <!-- 1 destination: strong side wing -->
+          <circle cx="400" cy="212" r="18" fill="rgba(240,180,41,.18)" stroke="rgba(240,180,41,.65)" stroke-width="1.5" stroke-dasharray="4,3"/>
+          <rect x="338" y="168" width="124" height="22" rx="2" fill="rgba(0,0,0,.6)"/>
+          <text x="400" y="179" text-anchor="middle" fill="#f0b429" font-family="DM Mono" font-size="9" font-weight="600">1 ARRIVES</text>
+          <text x="400" y="189" text-anchor="middle" fill="#f0b429" font-family="DM Mono" font-size="9">STRONG WING</text>
+
+          <!-- DHO label — positioned clear of 5 circle -->
+          <rect x="120" y="165" width="40" height="14" rx="2" fill="rgba(0,0,0,.65)"/>
+          <text x="140" y="175" text-anchor="middle" fill="#c39bd3" font-family="DM Mono" font-size="10" font-weight="600">DHO</text>
+          <!-- DHO circle indicator -->
+          <circle cx="180" cy="215" r="26" fill="none" stroke="rgba(155,89,182,.5)" stroke-width="1.5" stroke-dasharray="4,3"/>
+
+          <rect x="32" y="396" width="456" height="14" rx="2" fill="rgba(0,0,0,.55)"/>
+          <text x="260" y="407" text-anchor="middle" fill="#f0b429" font-family="DM Mono" font-size="10" font-weight="600">5 Dribble Handoff → 1 receives · 1 dribbles to STRONG-SIDE WING</text>
+        </svg>
+      </div>
+
+      <!-- ───────── PHASE 8: Princeton CHIN Action ───────── -->
+      <div class="phase-diagram" id="pd-8">
+        <svg class="cs" viewBox="0 0 520 420" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="au8" markerWidth="7" markerHeight="7" refX="5" refY="2.5" orient="auto"><path d="M0,0 L0,5 L7,2.5z" fill="#f0b429"/></marker>
+            <marker id="ap8" markerWidth="7" markerHeight="7" refX="5" refY="2.5" orient="auto"><path d="M0,0 L0,5 L7,2.5z" fill="#c39bd3"/></marker>
+            <marker id="ab8" markerWidth="7" markerHeight="7" refX="5" refY="2.5" orient="auto"><path d="M0,0 L0,5 L7,2.5z" fill="#7db3ff"/></marker>
+            <marker id="ag8" markerWidth="7" markerHeight="7" refX="5" refY="2.5" orient="auto"><path d="M0,0 L0,5 L7,2.5z" fill="#27ae60"/></marker>
+            <marker id="ar8" markerWidth="7" markerHeight="7" refX="5" refY="2.5" orient="auto"><path d="M0,0 L0,5 L7,2.5z" fill="#ff7b6e"/></marker>
+            <marker id="at8" markerWidth="7" markerHeight="7" refX="5" refY="2.5" orient="auto"><path d="M0,0 L0,5 L7,2.5z" fill="#1abc9c"/></marker>
+          </defs>
+          <rect width="520" height="420" fill="#1a1a2e"/>
+          <rect x="20" y="18" width="480" height="384" fill="#c8a055" rx="3" stroke="#e8d5a8" stroke-width="2"/>
+          <path d="M58 355 A204 204 0 0 1 462 355" fill="none" stroke="#e8d5a8" stroke-width="1.5"/>
+          <line x1="58" y1="320" x2="58" y2="355" stroke="#e8d5a8" stroke-width="1.5"/>
+          <line x1="462" y1="320" x2="462" y2="355" stroke="#e8d5a8" stroke-width="1.5"/>
+          <rect x="180" y="285" width="160" height="100" fill="#b89040" stroke="#e8d5a8" stroke-width="1.5"/>
+          <line x1="180" y1="315" x2="340" y2="315" stroke="#e8d5a8" stroke-width="1"/>
+          <path d="M188 315 A72 72 0 0 1 332 315" fill="none" stroke="#e8d5a8" stroke-width="1.5"/>
+          <line x1="180" y1="285" x2="180" y2="315" stroke="#e8d5a8" stroke-width="1"/>
+          <line x1="340" y1="285" x2="340" y2="315" stroke="#e8d5a8" stroke-width="1"/>
+          <circle cx="260" cy="370" r="10" fill="none" stroke="#e8d5a8" stroke-width="2"/>
+          <line x1="235" y1="370" x2="285" y2="370" stroke="#e8d5a8" stroke-width="1.5"/>
+
+          <!-- CHIN title box -->
+          <rect x="186" y="24" width="148" height="22" fill="rgba(240,180,41,.12)" stroke="rgba(240,180,41,.4)" stroke-width="1" rx="2"/>
+          <text x="260" y="39" text-anchor="middle" fill="#f0b429" font-family="Bebas Neue" font-size="15" letter-spacing="2">PRINCETON CHIN</text>
+
+          <!-- 1 has ball at strong-side wing (right) -->
+          <g class="pc" data-l="1 — STRONG SIDE WING · initiates CHIN" data-t="1 has the ball at the strong-side wing — the Chin action entry point. 1 is the driver. They can: A) pass to 4 at elbow (Chin entry), who then screens for 2; B) drive off 4's ball screen; C) skip to 5 popping top.">
+            <circle cx="420" cy="215" r="18" fill="#f0b429" stroke="#ffd060" stroke-width="2"/>
+            <text x="420" y="221" text-anchor="middle" fill="#0d1017" font-family="Bebas Neue" font-size="17">1</text>
+          </g>
+          <circle cx="402" cy="222" r="6" fill="#ff6b00" stroke="white" stroke-width="1.5"/>
+
+          <!-- 4 at strong-side elbow — CHIN screen -->
+          <g class="pc" data-l="4 — STRONG ELBOW · CHIN screen for 2" data-t="4 is at the strong-side elbow — the heart of the Chin action. CHIN = 1 passes to 4, then 4 turns and sets a ball screen for 2 coming off the corner. OR 4 simply catches, shot fakes, and drives the open elbow lane.">
+            <circle cx="340" cy="285" r="18" fill="#e03a2e" stroke="#ff7b6e" stroke-width="2"/>
+            <text x="340" y="291" text-anchor="middle" fill="white" font-family="Bebas Neue" font-size="17">4</text>
+          </g>
+
+          <!-- CHIN: 1 passes to 4 at elbow -->
+          <line x1="403" y1="225" x2="355" y2="275" stroke="#f0b429" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#au8)"/>
+          <rect x="360" y="232" width="90" height="13" rx="2" fill="rgba(0,0,0,.6)"/>
+          <text x="405" y="242" text-anchor="middle" fill="#f0b429" font-family="DM Mono" font-size="9" font-weight="600">A: CHIN ENTRY</text>
+
+          <!-- 2 comes off corner → curls off 4's screen at elbow for shot -->
+          <path d="M462 315 Q420 300 354 288" stroke="#27ae60" stroke-width="2.5" fill="none" marker-end="url(#ag8)"/>
+          <g class="pc" data-l="2 — CURLS off 4's elbow screen (CHIN curl)" data-t="2 raises from the right corner, reads 4's position at the elbow, and curls around 4's body toward the basket. 4 catches from 1, shot-fakes, pivots, and hands off (or passes) to 2 curling to the rim. This is the core CHIN action — the elbow catch-and-turn creates a handoff or drive for the curl man.">
+            <circle cx="462" cy="315" r="18" fill="#27ae60" stroke="#2ecc71" stroke-width="2"/>
+            <text x="462" y="321" text-anchor="middle" fill="white" font-family="Bebas Neue" font-size="17">2</text>
+          </g>
+
+          <!-- 2 curl path continues toward basket -->
+          <path d="M354 290 Q320 310 295 345" stroke="#27ae60" stroke-width="2" fill="none" stroke-dasharray="6,4" marker-end="url(#ag8)"/>
+          <rect x="238" y="348" width="100" height="13" rx="2" fill="rgba(0,0,0,.6)"/>
+          <text x="288" y="358" text-anchor="middle" fill="#2ecc71" font-family="DM Mono" font-size="9" font-weight="600">CURL → BASKET</text>
+
+          <!-- 4 screen indicator -->
+          <rect x="336" y="281" width="8" height="18" fill="#ff7b6e" rx="1"/>
+
+          <!-- 5 — pops to top (safety valve) after DHO -->
+          <g class="pc" data-l="5 — POPS to TOP (ball-side safety valve)" data-t="5, after the DHO, pops back to the top of the key area — the safety valve. If 2's curl is covered and 4 can't drive, 1 (or 4) reverses to 5 at the top and the offense resets.">
+            <circle cx="260" cy="185" r="18" fill="#9b59b6" stroke="#c39bd3" stroke-width="2"/>
+            <text x="260" y="191" text-anchor="middle" fill="white" font-family="Bebas Neue" font-size="17">5</text>
+          </g>
+
+          <!-- 3 — weak side corner (spacing) -->
+          <g class="pc" data-l="3 — WEAK SIDE CORNER (spacing)" data-t="3 holds the weak-side corner as the skip-pass outlet. If the strong-side Chin is collapsed by the defense, 1 or 4 can skip to 3 for an open 3-pointer.">
+            <circle cx="58" cy="355" r="18" fill="#2a6ae8" stroke="#7db3ff" stroke-width="2"/>
+            <text x="58" y="361" text-anchor="middle" fill="white" font-family="Bebas Neue" font-size="17">3</text>
+          </g>
+
+          <!-- OPTION B: 4 drives -->
+          <path d="M340 300 Q300 330 278 358" stroke="rgba(255,123,110,.65)" stroke-width="2" fill="none" stroke-dasharray="5,4" marker-end="url(#ar8)"/>
+          <rect x="234" y="306" width="72" height="13" rx="2" fill="rgba(0,0,0,.6)"/>
+          <text x="270" y="316" text-anchor="middle" fill="#ff7b6e" font-family="DM Mono" font-size="9" font-weight="600">B: 4 DRIVES</text>
+
+          <!-- OPTION C: skip to 3 -->
+          <line x1="402" y1="226" x2="74" y2="344" stroke="rgba(42,106,232,.55)" stroke-width="1.5" stroke-dasharray="5,4" marker-end="url(#ab8)"/>
+          <rect x="170" y="280" width="80" height="13" rx="2" fill="rgba(0,0,0,.6)"/>
+          <text x="210" y="290" text-anchor="middle" fill="#7db3ff" font-family="DM Mono" font-size="9" font-weight="600">C: SKIP → 3</text>
+
+          <rect x="32" y="396" width="456" height="14" rx="2" fill="rgba(0,0,0,.55)"/>
+          <text x="260" y="407" text-anchor="middle" fill="#f0b429" font-family="DM Mono" font-size="10" font-weight="600">PRINCETON CHIN · 1→4 elbow · 2 curls off screen · 3 corners · 5 pops</text>
+        </svg>
+      </div>
+
+    </div><!-- court-wrapper -->
+  </div><!-- court-area -->
+
+  <!-- ══════════════ SIDEBAR ══════════════ -->
+  <div class="sidebar">
+    <div class="prog-bar" id="progs"></div>
+    <div class="sidebar-body">
+
+      <!-- Phase 1 -->
+      <div class="phase-content active" id="sb-1">
+        <h3>Outlet &amp; Lanes</h3>
+        <div class="cp"><div class="cp-n">1</div><div class="cp-t"><span class="pill p5">5</span> <strong>outlets to 1</strong> on the near sideline. Whichever side 1 catches is the <strong>strong side</strong> — governs every downstream decision. <em>Drill: rebounder calls "ball!" — 1 breaks immediately.</em></div></div>
+        <div class="cp"><div class="cp-n">2</div><div class="cp-t"><span class="pill p2">2</span> and <span class="pill p3">3</span> fill the sideline lanes. <strong>Destination is the baseline corner — not the wing.</strong> Run all the way. <em>Cue: "corner or bust."</em></div></div>
+        <div class="cp"><div class="cp-n">3</div><div class="cp-t"><span class="pill p4">4</span> is the <strong>rim runner</strong> — middle lane, straight to the basket. The primary scoring threat on the break. Every other player's spacing is designed to protect this lane.</div></div>
+        <div class="kbox"><strong>For Parents</strong>Think of it like a football kickoff return: three lanes, three runners, nobody sharing a lane. The middle runner goes to the end zone. The sideline runners go to the back corners.</div>
+      </div>
+
+      <!-- Phase 2 -->
+      <div class="phase-content" id="sb-2">
+        <h3>Push — Wings to Corners</h3>
+        <div class="cp"><div class="cp-n">1</div><div class="cp-t"><span class="pill p1">1</span> <strong>attacks the middle immediately</strong> after catching. Never dribble up the sideline. The middle attack collapses any zone or man defense and opens the rim runner.</div></div>
+        <div class="cp"><div class="cp-n">2</div><div class="cp-t"><strong>First look is always the rim runner (<span class="pill p4">4</span>).</strong> If 4 has a step and space, deliver the pass for the layup. This is the primary DeMatha fast break score.</div></div>
+        <div class="cp"><div class="cp-n">3</div><div class="cp-t"><span class="pill p2">2</span> and <span class="pill p3">3</span> sprint their sideline lanes all the way to the <strong>baseline corners</strong> — they do not slow at the wing. Even while the break is happening. <em>"Don't watch — run."</em></div></div>
+        <div class="cp"><div class="cp-n">4</div><div class="cp-t"><span class="pill p5">5</span> trails and reads: Does 4 score? If yes, sprint for offensive glass. If no, slow to a read — they are the Princeton trailer piece.</div></div>
+      </div>
+
+      <!-- Phase 3 -->
+      <div class="phase-content" id="sb-3">
+        <h3>PG → Strong Elbow → Opp Corner</h3>
+        <div class="cp"><div class="cp-n">1</div><div class="cp-t">No layup to <span class="pill p4">4</span>. <span class="pill p1">1</span> looks to the strong-side corner (<span class="pill p2">2</span>). <strong>Pass and follow</strong> — after the pass, 1 follows to the strong-side elbow immediately.</div></div>
+        <div class="cp"><div class="cp-n">2</div><div class="cp-t">The <strong>strong-side elbow is the read point.</strong> 1 arrives and reads: open for the return pass and drive? Yes → call for it. No → continue the cut through the paint.</div></div>
+        <div class="cp"><div class="cp-n">3</div><div class="cp-t">From the elbow, <span class="pill p1">1</span> <strong>cuts hard to the opposite (left) corner.</strong> This clears the strong side and is the direct cue for 5 to fill the vacated slot.</div></div>
+        <div class="bbridge"><strong>🔗 The Structural Bridge</strong>1's elbow-to-opposite-corner path IS the transition from fast break to Princeton. The slot 1 vacates is exactly where 5 steps in. No stopping. No regrouping. One continuous movement.</div>
+      </div>
+
+      <!-- Phase 4 -->
+      <div class="phase-content" id="sb-4">
+        <h3>5 Fills · 3 Lifts — Simultaneously</h3>
+        <div class="cp"><div class="cp-n">1</div><div class="cp-t"><span class="pill p5">5</span> reads <span class="pill p1">1</span> cutting away. <strong>5 flows directly into 1's vacated slot</strong> — the strong-side elbow/wing area above the arc, vertically aligned with the right elbow. 5 inherits 1's space exactly.</div></div>
+        <div class="cp"><div class="cp-n">2</div><div class="cp-t"><strong>At the same moment</strong>, <span class="pill p3">3</span> lifts from the weak-side left corner to the <strong>opposite top slot</strong> — left elbow/wing above the arc. These two moves happen simultaneously as 1 cuts through.</div></div>
+        <div class="cp"><div class="cp-n">3</div><div class="cp-t"><span class="pill p2">2</span> holds the right corner. No shot → holds, waits for 5 to arrive, then <strong>swings ball to 5</strong> to initiate the Princeton entry.</div></div>
+        <div class="cp"><div class="cp-n">4</div><div class="cp-t"><span class="pill p4">4</span> on the weak-side block — the only interior player in the 4-out set.</div></div>
+        <div class="kbox"><strong>Drill Cue</strong>"1 goes down, 3 comes up — same time." Players must link these two movements. It's one trigger, not two separate actions.</div>
+      </div>
+
+      <!-- Phase 5 -->
+      <div class="phase-content" id="sb-5">
+        <h3>Princeton 4-Out Set</h3>
+        <div class="cp"><div class="cp-n">1</div><div class="cp-t"><strong>Top slots aligned above elbows:</strong> <span class="pill p5">5</span> at top right (above right elbow), <span class="pill p3">3</span> at top left (above left elbow). Both inside the 3pt arc vertically, wide enough to shoot but not on the sideline.</div></div>
+        <div class="cp"><div class="cp-n">2</div><div class="cp-t"><strong>Corners at baseline:</strong> <span class="pill p2">2</span> in right baseline corner, <span class="pill p1">1</span> in left baseline corner — horizontally even with the basket, near the 3pt corner.</div></div>
+        <div class="cp"><div class="cp-n">3</div><div class="cp-t"><span class="pill p4">4</span> <strong>comes up from the strong-side block to the strong-side elbow.</strong> This gives a high-low triangle on the right side: 5 (top) → 4 (elbow) → 2 (corner). Princeton's primary structure.</div></div>
+        <div class="cp"><div class="cp-n">4</div><div class="cp-t"><strong>Paint is empty.</strong> No one in the lane. This is intentional — creates the drive lanes and backdoor cuts that Princeton lives on.</div></div>
+        <div class="kbox"><strong>Coach's Eye</strong>The high-low on the strong side (5 top, 4 elbow, 2 corner) means the defense has to guard three levels simultaneously. They can't help on all three. One will be open.</div>
+      </div>
+
+      <!-- Phase 6 -->
+      <div class="phase-content" id="sb-6">
+        <h3>Dribble-At · V-Cut Backdoor · 1 &amp; 2 Raise</h3>
+        <div class="cp"><div class="cp-n">1</div><div class="cp-t"><span class="pill p5">5</span> <strong>dribbles directly at <span class="pill p3">3</span></strong> in the weak-side top slot. This is a deliberate Princeton "dribble-at" action — it signals the backdoor and forces the defender to react.</div></div>
+        <div class="cp"><div class="cp-n">2</div><div class="cp-t"><span class="pill p3">3</span> reads the dribble-at and executes the <strong>V-cut: one step toward the ball</strong> (selling the catch), then plants and cuts BACKDOOR to the basket. The step toward is critical — it creates the separation.</div></div>
+        <div class="cp"><div class="cp-n">3</div><div class="cp-t"><strong>Simultaneously</strong>: <span class="pill p1">1</span> raises from the left baseline corner to FT-line depth on the left side. <span class="pill p2">2</span> raises from the right baseline corner to FT-line depth on the right side. Both corners lift at the same time.</div></div>
+        <div class="cp"><div class="cp-n">4</div><div class="cp-t"><span class="pill p4">4</span> holds the strong-side elbow — stationary. The paint is still protected for 3's backdoor cut path.</div></div>
+        <div class="kbox"><strong>For Parents</strong>The "dribble-at" is like setting a pick with the dribble — the driver goes toward the wing player, and the wing player uses that movement to back-cut to the basket. It's one of the oldest and most effective actions in basketball.</div>
+      </div>
+
+      <!-- Phase 7 -->
+      <div class="phase-content" id="sb-7">
+        <h3>Dribble Handoff → Strong-Side Wing</h3>
+        <div class="cp"><div class="cp-n">1</div><div class="cp-t">3's backdoor is not available (defense recovered). <span class="pill p5">5</span> continues the dribble past 3's cleared spot, arriving at the weak-side top area. <span class="pill p1">1</span> (now at left FT-depth) comes to meet 5.</div></div>
+        <div class="cp"><div class="cp-n">2</div><div class="cp-t"><strong>Dribble Handoff (DHO):</strong> 5 extends the ball as 1 rubs off 5's body. 1 receives the ball mid-action — this is a live dribble handoff, not a pass. The rub creates a natural screen.</div></div>
+        <div class="cp"><div class="cp-n">3</div><div class="cp-t">After the DHO, <span class="pill p1">1</span> <strong>dribbles right, back to the strong-side wing.</strong> This re-establishes the ball on the strong side — exactly where the Chin action initiates.</div></div>
+        <div class="cp"><div class="cp-n">4</div><div class="cp-t"><span class="pill p5">5</span> pops to the top of the key after the handoff. <span class="pill p2">2</span> stays at right FT-depth (right wing). <span class="pill p4">4</span> holds strong elbow. The Chin set is now ready.</div></div>
+        <div class="bbridge"><strong>🔗 Why the DHO</strong>The DHO is not just a ball-movement action — it's a defensive disruptor. It forces a switch decision, often creating a mismatch. 1 comes off the DHO with a full head of steam toward the strong side, putting pressure on whichever defender picks them up.</div>
+      </div>
+
+      <!-- Phase 8 -->
+      <div class="phase-content" id="sb-8">
+        <h3>Princeton CHIN Action</h3>
+        <div class="cp"><div class="cp-n">A</div><div class="cp-t"><strong>CHIN Entry:</strong> <span class="pill p1">1</span> passes to <span class="pill p4">4</span> at the strong-side elbow. 4 catches, shot-fakes, pivots. <span class="pill p2">2</span> curls off 4's body from the wing toward the basket — reading: layup if open, pull-up at the elbow if defense recovers.</div></div>
+        <div class="cp"><div class="cp-n">B</div><div class="cp-t"><strong>4 Drives:</strong> If 4 catches at the elbow and 2's curl draws the help, <span class="pill p4">4</span> drives the open elbow lane. The paint is empty — no help inside. Finish or kick to <span class="pill p5">5</span> at the top.</div></div>
+        <div class="cp"><div class="cp-n">C</div><div class="cp-t"><strong>Skip to 3:</strong> If the strong side is fully loaded with defenders, <span class="pill p1">1</span> skips to <span class="pill p3">3</span> in the weak-side corner. 3 is open because all attention went to the Chin action. Catch-and-shoot corner 3.</div></div>
+        <div class="cp"><div class="cp-n">D</div><div class="cp-t"><strong>5 Safety:</strong> <span class="pill p5">5</span> at the top is always the reset. If nothing develops, reverse to 5, reset, and run the Chin again from the other side.</div></div>
+        <div class="kbox"><strong>Why CHIN Works Here</strong>The full sequence (break → 4-out set → dribble-at → DHO → Chin) has tired the defense with decisions on every phase. By the time 4 catches at the elbow for the Chin, the defense is a step slow and has already reacted to four different actions. The Chin finishes a scheme, not just a play.</div>
+      </div>
+
+    </div><!-- sidebar-body -->
+  </div><!-- sidebar -->
+
+</div><!-- main -->
+
+<script>
+  const PHASES = 8;
+  const LABELS = ['Outlet','Push','PG Move','5 Fills / 3 Lifts','4-Out Set','Dribble-At','DHO','Chin'];
+
+  const tabsEl = document.getElementById('tabs');
+  const progsEl = document.getElementById('progs');
+
+  // Build tabs and prog steps
+  for (let i = 1; i <= PHASES; i++) {
+    const tb = document.createElement('button');
+    tb.className = 'phase-tab' + (i===1?' active':'');
+    tb.dataset.phase = i;
+    tb.textContent = `${['①','②','③','④','⑤','⑥','⑦','⑧'][i-1]} ${LABELS[i-1]}`;
+    tabsEl.appendChild(tb);
+
+    const ps = document.createElement('div');
+    ps.className = 'prog-step' + (i===1?' active':'');
+    ps.dataset.phase = i;
+    ps.innerHTML = `<div style="font-size:11px">${['①','②','③','④','⑤','⑥','⑦','⑧'][i-1]}</div><div>${LABELS[i-1]}</div>`;
+    progsEl.appendChild(ps);
+  }
+
+  function switchPhase(p) {
+    document.querySelectorAll('.phase-tab').forEach(t => t.classList.toggle('active', +t.dataset.phase===p));
+    document.querySelectorAll('.prog-step').forEach(s => s.classList.toggle('active', +s.dataset.phase===p));
+    document.querySelectorAll('.phase-diagram').forEach(d => d.classList.toggle('active', d.id===`pd-${p}`));
+    document.querySelectorAll('.phase-content').forEach(c => c.classList.toggle('active', c.id===`sb-${p}`));
+  }
+
+  document.querySelectorAll('.phase-tab').forEach(t => t.addEventListener('click', () => switchPhase(+t.dataset.phase)));
+  document.querySelectorAll('.prog-step').forEach(s => s.addEventListener('click', () => switchPhase(+s.dataset.phase)));
+
+  // Tooltips
+  const tipEl = document.getElementById('tip');
+  const cw = document.getElementById('cw');
+
+  document.querySelectorAll('.pc').forEach(el => {
+    el.addEventListener('mouseenter', () => {
+      tipEl.innerHTML = `<strong>${el.dataset.l||''}</strong>${el.dataset.t||''}`;
+      tipEl.classList.add('show');
+    });
+    el.addEventListener('mousemove', e => {
+      const r = cw.getBoundingClientRect();
+      let x = e.clientX - r.left + 14, y = e.clientY - r.top + 14;
+      if (x + 210 > r.width) x -= 222;
+      if (y + 130 > r.height) y -= 140;
+      tipEl.style.left = x + 'px';
+      tipEl.style.top = y + 'px';
+    });
+    el.addEventListener('mouseleave', () => tipEl.classList.remove('show'));
+  });
+</script>
+</body>
+</html>
